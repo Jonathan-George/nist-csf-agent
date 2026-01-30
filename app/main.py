@@ -1,9 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
+import traceback
 
 from langchain_openai import ChatOpenAI
+
+# -----------------------------
+# Validate API key EARLY
+# -----------------------------
+
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+if not OPENROUTER_API_KEY:
+    raise RuntimeError("OPENROUTER_API_KEY is not set in the environment")
 
 app = FastAPI(title="NIST CSF AI Agent")
 
@@ -13,20 +22,20 @@ app = FastAPI(title="NIST CSF AI Agent")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow frontend apps
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # -----------------------------
-# Load LLM (ASYNC-SAFE)
+# Load LLM (STABLE CONFIG)
 # -----------------------------
 
 llm = ChatOpenAI(
-    model="deepseek/deepseek-chat",
+    model="deepseek-chat",
     openai_api_base="https://openrouter.ai/api/v1",
-    openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+    openai_api_key=OPENROUTER_API_KEY,  # <-- STRING, NOT getenv inline
     default_headers={
         "HTTP-Referer": "https://nist-csf-agent.onrender.com",
         "X-Title": "NIST CSF AI Agent",
@@ -75,44 +84,39 @@ async def llm_reason(message: str) -> str:
         "'This is not explicitly addressed in the NIST Cybersecurity Framework.'"
     )
 
-    prompt = f"""
-{system_prompt}
-
-USER QUESTION:
-{message}
-"""
+    prompt = f"{system_prompt}\n\nUSER QUESTION:\n{message}"
 
     response = await llm.ainvoke(prompt)
+    text = response.content
 
-    clean = response.content
-
-    # Strip formatting
     for ch in ["**", "*", "•", "-", "_", "`", "#"]:
-        clean = clean.replace(ch, "")
+        text = text.replace(ch, "")
 
-    clean = "\n".join(
-        line.strip() for line in clean.splitlines() if line.strip()
-    )
-
-    return clean
+    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
 
 # -----------------------------
-# Chat Endpoint (ASYNC)
+# Chat Endpoint
 # -----------------------------
 
 @app.post("/chat")
 async def chat(request: ChatRequest):
-    intent = detect_intent(request.message)
+    try:
+        intent = detect_intent(request.message)
 
-    if intent == "out_of_scope":
+        if intent == "out_of_scope":
+            return {
+                "agent_mode": "refuse",
+                "response": "I can only provide guidance based on the NIST Cybersecurity Framework.",
+            }
+
+        answer = await llm_reason(request.message)
+
         return {
-            "agent_mode": "refuse",
-            "response": "I can only provide guidance based on the NIST Cybersecurity Framework.",
+            "agent_mode": intent,
+            "response": answer,
         }
 
-    answer = await llm_reason(request.message)
-
-    return {
-        "agent_mode": intent,
-        "response": answer,
-    }
+    except Exception as e:
+        print("🔥 CHAT ERROR:")
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="LLM execution failed")
