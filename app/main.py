@@ -25,8 +25,12 @@ app.add_middleware(
 
 llm = ChatOpenAI(
     model="deepseek/deepseek-chat",
-    openai_api_base="https://openrouter.ai/api/v1",
     openai_api_key=os.getenv("OPENROUTER_API_KEY"),
+    openai_api_base="https://openrouter.ai/api/v1",
+    default_headers={
+        "HTTP-Referer": "https://nist-csf-agent.onrender.com",
+        "X-Title": "NIST CSF AI Agent"
+    },
     temperature=0,
 )
 
