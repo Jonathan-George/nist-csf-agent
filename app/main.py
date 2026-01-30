@@ -6,10 +6,6 @@ import traceback
 
 from langchain_openai import ChatOpenAI
 
-# -----------------------------
-# FastAPI App
-# -----------------------------
-
 app = FastAPI(title="NIST CSF AI Agent")
 
 # -----------------------------
@@ -25,13 +21,13 @@ app.add_middleware(
 )
 
 # -----------------------------
-# Load LLM (CORRECT + STABLE)
+# Load LLM (Render-safe)
 # -----------------------------
 
 llm = ChatOpenAI(
-    model="deepseek/deepseek-chat",
-    api_key=OPENROUTER_API_KEY,                 # ✅ REQUIRED
-    base_url="https://openrouter.ai/api/v1",    # ✅ REQUIRED
+    model="deepseek-chat",
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.environ["OPENROUTER_API_KEY"],  # <-- FIX IS HERE
     default_headers={
         "HTTP-Referer": "https://nist-csf-agent.onrender.com",
         "X-Title": "NIST CSF AI Agent",
@@ -65,7 +61,7 @@ def detect_intent(message: str) -> str:
     return "general"
 
 # -----------------------------
-# LLM Reasoning (ASYNC)
+# LLM Reasoning
 # -----------------------------
 
 async def llm_reason(message: str) -> str:
@@ -74,7 +70,6 @@ async def llm_reason(message: str) -> str:
         "Always respond in plain conversational English. "
         "Never use markdown, bullet points, numbered lists, or headings. "
         "Do not structure answers like documentation. "
-        "Respond like a human security consultant speaking naturally. "
         "Answer ONLY using the NIST Cybersecurity Framework. "
         "If the answer is not found, say: "
         "'This is not explicitly addressed in the NIST Cybersecurity Framework.'"
