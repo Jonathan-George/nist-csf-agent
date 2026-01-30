@@ -7,14 +7,6 @@ import traceback
 from langchain_openai import ChatOpenAI
 
 # -----------------------------
-# Validate API key EARLY
-# -----------------------------
-
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-if not OPENROUTER_API_KEY:
-    raise RuntimeError("OPENROUTER_API_KEY is not set in the environment")
-
-# -----------------------------
 # FastAPI App
 # -----------------------------
 
