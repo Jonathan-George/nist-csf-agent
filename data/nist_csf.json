@@ -1,0 +1,25 @@
+[
+  {
+    "function": "GOVERN",
+    "category": "GV.PO",
+    "control": "GV.PO-01",
+    "title": "Cybersecurity Policy Established",
+    "description": "Organizational cybersecurity policy is established and communicated.",
+    "how_to_assess": [
+      "Is there a written cybersecurity policy?",
+      "Is it approved by leadership?",
+      "Is it reviewed regularly?"
+    ],
+    "evidence": [
+      "Cybersecurity policy document",
+      "Board approval record"
+    ],
+    "maturity": {
+      "0": "No policy exists",
+      "1": "Draft policy exists",
+      "2": "Approved but not enforced",
+      "3": "Approved and enforced",
+      "4": "Reviewed and continuously improved"
+    }
+  }
+]

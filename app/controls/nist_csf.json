@@ -1,0 +1,20 @@
+[
+  {
+    "id": "GV.GV-01",
+    "function": "Govern",
+    "category": "Governance",
+    "title": "Cybersecurity governance is established",
+    "plain_english": "The organization has defined who is responsible for cybersecurity and how decisions are made.",
+    "why_it_matters": "Without governance, security efforts are inconsistent and ineffective.",
+    "assessment_questions": [
+      "Do you have a documented cybersecurity policy?",
+      "Who is responsible for cybersecurity decisions?",
+      "Is cybersecurity discussed at management or board level?"
+    ],
+    "good_evidence": [
+      "Cybersecurity policy",
+      "Org chart showing security roles",
+      "Board or management meeting minutes"
+    ]
+  }
+]
