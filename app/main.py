@@ -14,6 +14,10 @@ OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
 if not OPENROUTER_API_KEY:
     raise RuntimeError("OPENROUTER_API_KEY is not set in the environment")
 
+# -----------------------------
+# FastAPI App
+# -----------------------------
+
 app = FastAPI(title="NIST CSF AI Agent")
 
 # -----------------------------
@@ -29,13 +33,13 @@ app.add_middleware(
 )
 
 # -----------------------------
-# Load LLM (STABLE CONFIG)
+# Load LLM (CORRECT + STABLE)
 # -----------------------------
 
 llm = ChatOpenAI(
-    model="deepseek-chat",
-    openai_api_base="https://openrouter.ai/api/v1",
-    openai_api_key=OPENROUTER_API_KEY,  # <-- STRING, NOT getenv inline
+    model="deepseek/deepseek-chat",
+    api_key=OPENROUTER_API_KEY,                 # ✅ REQUIRED
+    base_url="https://openrouter.ai/api/v1",    # ✅ REQUIRED
     default_headers={
         "HTTP-Referer": "https://nist-csf-agent.onrender.com",
         "X-Title": "NIST CSF AI Agent",
@@ -116,7 +120,7 @@ async def chat(request: ChatRequest):
             "response": answer,
         }
 
-    except Exception as e:
-        print("🔥 CHAT ERROR:")
+    except Exception:
+        print("🔥 CHAT ERROR")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="LLM execution failed")
