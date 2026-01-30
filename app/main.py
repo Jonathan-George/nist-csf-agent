@@ -1,8 +1,7 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
-import traceback
 
 from langchain_openai import ChatOpenAI
 
@@ -14,23 +13,23 @@ app = FastAPI(title="NIST CSF AI Agent")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["*"],  # allow frontend apps
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # -----------------------------
-# Load LLM ONLY (NO FAISS)
+# Load LLM (ASYNC-SAFE)
 # -----------------------------
 
 llm = ChatOpenAI(
     model="deepseek/deepseek-chat",
-    openai_api_key=os.getenv("OPENROUTER_API_KEY"),
     openai_api_base="https://openrouter.ai/api/v1",
+    openai_api_key=os.getenv("OPENROUTER_API_KEY"),
     default_headers={
         "HTTP-Referer": "https://nist-csf-agent.onrender.com",
-        "X-Title": "NIST CSF AI Agent"
+        "X-Title": "NIST CSF AI Agent",
     },
     temperature=0,
 )
@@ -43,7 +42,7 @@ class ChatRequest(BaseModel):
     message: str
 
 # -----------------------------
-# Intent Detection (GUARDS ONLY)
+# Intent Detection
 # -----------------------------
 
 def detect_intent(message: str) -> str:
@@ -51,23 +50,20 @@ def detect_intent(message: str) -> str:
 
     if "outside nist" in msg:
         return "out_of_scope"
-
     if msg.startswith("explain"):
         return "teach"
-
     if "assessment" in msg or msg.startswith("assess"):
         return "assess"
-
     if msg.startswith(("yes", "no")):
         return "evaluate"
 
     return "general"
 
 # -----------------------------
-# LLM Reasoning (NO RAG)
+# LLM Reasoning (ASYNC)
 # -----------------------------
 
-def llm_reason(message: str) -> str:
+async def llm_reason(message: str) -> str:
     system_prompt = (
         "You are a NIST Cybersecurity Framework expert AI. "
         "Always respond in plain conversational English. "
@@ -86,22 +82,14 @@ USER QUESTION:
 {message}
 """
 
-    response = llm.invoke(prompt)
+    response = await llm.ainvoke(prompt)
 
     clean = response.content
 
-    # HARD STRIP MARKDOWN / FORMATTING
-    clean = clean.replace("**", "")
-    clean = clean.replace("*", "")
-    clean = clean.replace("•", "")
-    clean = clean.replace("-", "")
-    clean = clean.replace("_", "")
-    clean = clean.replace("`", "")
-    clean = clean.replace("###", "")
-    clean = clean.replace("##", "")
-    clean = clean.replace("#", "")
+    # Strip formatting
+    for ch in ["**", "*", "•", "-", "_", "`", "#"]:
+        clean = clean.replace(ch, "")
 
-    # Collapse excessive newlines
     clean = "\n".join(
         line.strip() for line in clean.splitlines() if line.strip()
     )
@@ -109,32 +97,22 @@ USER QUESTION:
     return clean
 
 # -----------------------------
-# Chat Endpoint (CORRECTED)
+# Chat Endpoint (ASYNC)
 # -----------------------------
 
 @app.post("/chat")
-def chat(request: ChatRequest):
-    try:
-        intent = detect_intent(request.message)
+async def chat(request: ChatRequest):
+    intent = detect_intent(request.message)
 
-        if intent == "out_of_scope":
-            return {
-                "agent_mode": "refuse",
-                "response": "I can only provide guidance based on the NIST Cybersecurity Framework."
-            }
-
-        answer = llm_reason(request.message)
-
+    if intent == "out_of_scope":
         return {
-            "agent_mode": intent,
-            "response": answer
+            "agent_mode": "refuse",
+            "response": "I can only provide guidance based on the NIST Cybersecurity Framework.",
         }
 
-    except Exception as e:
-        print("LLM ERROR:")
-        traceback.print_exc()
+    answer = await llm_reason(request.message)
 
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+    return {
+        "agent_mode": intent,
+        "response": answer,
+    }
