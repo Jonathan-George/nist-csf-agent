@@ -21,13 +21,22 @@ app.add_middleware(
 )
 
 # -----------------------------
+# Load API key (SAFE)
+# -----------------------------
+
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+
+if not OPENROUTER_API_KEY:
+    print("⚠️ WARNING: OPENROUTER_API_KEY is not set")
+
+# -----------------------------
 # Load LLM (Render-safe)
 # -----------------------------
 
 llm = ChatOpenAI(
     model="deepseek-chat",
     base_url="https://openrouter.ai/api/v1",
-    api_key=os.environ["OPENROUTER_API_KEY"],  # <-- FIX IS HERE
+    api_key=OPENROUTER_API_KEY,
     default_headers={
         "HTTP-Referer": "https://nist-csf-agent.onrender.com",
         "X-Title": "NIST CSF AI Agent",
@@ -83,7 +92,9 @@ async def llm_reason(message: str) -> str:
     for ch in ["**", "*", "•", "-", "_", "`", "#"]:
         text = text.replace(ch, "")
 
-    return "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    return "\n".join(
+        line.strip() for line in text.splitlines() if line.strip()
+    )
 
 # -----------------------------
 # Chat Endpoint
