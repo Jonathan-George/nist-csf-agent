@@ -1,7 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
+import traceback
 
 from langchain_openai import ChatOpenAI
 
@@ -108,22 +109,32 @@ USER QUESTION:
     return clean
 
 # -----------------------------
-# Chat Endpoint
+# Chat Endpoint (CORRECTED)
 # -----------------------------
 
 @app.post("/chat")
 def chat(request: ChatRequest):
-    intent = detect_intent(request.message)
+    try:
+        intent = detect_intent(request.message)
 
-    if intent == "out_of_scope":
+        if intent == "out_of_scope":
+            return {
+                "agent_mode": "refuse",
+                "response": "I can only provide guidance based on the NIST Cybersecurity Framework."
+            }
+
+        answer = llm_reason(request.message)
+
         return {
-            "agent_mode": "refuse",
-            "response": "I can only provide guidance based on the NIST Cybersecurity Framework."
+            "agent_mode": intent,
+            "response": answer
         }
 
-    answer = llm_reason(request.message)
+    except Exception as e:
+        print("LLM ERROR:")
+        traceback.print_exc()
 
-    return {
-        "agent_mode": intent,
-        "response": answer
-    }
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
